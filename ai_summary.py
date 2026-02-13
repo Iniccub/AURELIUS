@@ -3,6 +3,8 @@ import requests
 import json
 import pandas as pd
 import os
+import msoffcrypto
+import io
 
 def get_openai_api_key():
     """Recupera a chave da API da OpenAI dos secrets do Streamlit."""
@@ -17,13 +19,36 @@ def get_openai_api_key():
         return None
 
 def load_cargos_info():
-    """Carrega informações de cargos do arquivo Excel para contexto."""
+    """Carrega informações de cargos do arquivo Excel para contexto, suportando arquivos protegidos por senha."""
     try:
         file_path = os.path.join(os.getcwd(), 'CARGOS.xlsx')
         if not os.path.exists(file_path):
             return "Informações de cargos não disponíveis (Arquivo CARGOS.xlsx não encontrado)."
         
-        df = pd.read_excel(file_path)
+        # Tenta recuperar a senha dos secrets
+        excel_password = None
+        try:
+            excel_password = st.secrets["excel"]["password"]
+        except Exception:
+            pass # Nenhuma senha configurada, segue fluxo normal
+            
+        if excel_password:
+            try:
+                # Fluxo para arquivo protegido
+                decrypted_workbook = io.BytesIO()
+                with open(file_path, "rb") as file:
+                    office_file = msoffcrypto.OfficeFile(file)
+                    office_file.load_key(password=excel_password)
+                    office_file.decrypt(decrypted_workbook)
+                
+                df = pd.read_excel(decrypted_workbook)
+            except Exception as crypto_error:
+                # Se falhar a descriptografia, tenta abrir normal (pode ser que a senha não fosse necessária ou estava errada)
+                # ou retorna o erro específico.
+                return f"Erro ao abrir arquivo protegido (verifique a senha no secrets): {str(crypto_error)}"
+        else:
+            # Fluxo padrão sem senha
+            df = pd.read_excel(file_path)
         
         # Cria uma string formatada com as informações relevantes
         cargos_context = "Lista de Colaboradores e Cargos da Rede Lius:\n"
