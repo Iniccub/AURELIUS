@@ -6,9 +6,9 @@ import urllib.parse
 
 # Substitua estas informações pelas suas credenciais do MongoDB Atlas
 try:
-    MONGODB_USERNAME = st.secrets["mongodb"]["username"]
-    MONGODB_PASSWORD = st.secrets["mongodb"]["password"]
-    MONGODB_CLUSTER = st.secrets["mongodb"]["cluster_url"]
+    MONGODB_USERNAME = "felipebuccini"
+    MONGODB_PASSWORD = "hJOCyFkxTqja261p"
+    MONGODB_CLUSTER = "cluster0.5vfpfvh.mongodb.net"
 except KeyError as e:
     st.error(f"Erro ao acessar configurações do MongoDB: {e}")
     st.error("Verifique se o arquivo secrets.toml está configurado corretamente.")

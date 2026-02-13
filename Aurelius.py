@@ -188,148 +188,109 @@ elif mode == "Bloco de Notas":
     except Exception as e:
         st.error(f"Erro ao conectar ao banco de dados: {e}")
 
-    col_left, col_right = st.columns(2)
+    col_left, col_right = st.columns([1, 1], gap="large")
     
     with col_left:
-        st.subheader("📝 Descrição da Reunião")
-        usuario = st.text_input("Usuário", value="", key="notepad_user", placeholder="Seu nome")
-        notes = st.text_area("Digite aqui suas anotações da reunião:", height=500, placeholder="Comece a digitar os pontos principais da reunião...", key="notepad_notes")
-        
-    with col_right:
-        st.subheader("🗄️ Repositório de Arquivo")
-        
-        # Inicializa variável no session_state para preencher o campo, se necessário
-        if "archive_input_val" not in st.session_state:
-            st.session_state.archive_input_val = ""
-
-        # Área para ADICIONAR nova nota
-        # Usamos value=st.session_state.archive_input_val para permitir atualização via código
-        new_archive_input = st.text_area("Adicionar nova nota ao arquivo:", height=150, key="new_archive_input", placeholder="Digite aqui a informação que deseja adicionar ao histórico...", value=st.session_state.archive_input_val)
-        
-        # Sincroniza o widget com a variável auxiliar (necessário para limpar depois)
-        # Se o usuário digitou algo, atualizamos a variável auxiliar para persistir
-        # Mas se acabamos de setar via botão, queremos que o widget reflita
-        
-        col_btn1, col_btn2 = st.columns([1, 1])
-        
-        # Variável para controlar a ação de adicionar, já que o botão está dentro da coluna
-        add_clicked = False
-        with col_btn1:
-            if st.button("➕ Adicionar e Arquivar"):
-                add_clicked = True
-        
-        with col_btn2:
-             if st.button("⬇️ Copiar Notas para Arquivo", help="Copia todo o texto da Descrição da Reunião para a área de edição do arquivo."):
-                 if "notepad_notes" in st.session_state and st.session_state.notepad_notes:
-                     # Atualizamos a variável auxiliar e recarregamos
-                     st.session_state.archive_input_val = st.session_state.notepad_notes
-                     st.rerun()
-                 else:
-                     st.warning("Não há anotações para copiar.")
-
-        if add_clicked:
-            if new_archive_input:
-                if db is not None:
-                    try:
-                        # 1. Recuperar conteúdo atual do banco
-                        current_doc = collection.find_one({"_id": doc_id})
-                        current_text = current_doc["content"] if current_doc and "content" in current_doc else ""
-                        
-                        # 2. Formatar a nova entrada com Timestamp e Usuário
-                        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
-                        user_str = f" | Usuário: {usuario}" if usuario else ""
-                        new_entry = f"\n\n=== Registro em {timestamp}{user_str} ===\n{new_archive_input}"
-                        
-                        # 3. Concatenar
-                        if not current_text:
-                             updated_text = f"=== Registro em {timestamp}{user_str} ===\n{new_archive_input}"
-                        else:
-                             updated_text = current_text + new_entry
-                        
-                        # 4. Atualizar no Banco
-                        collection.update_one(
-                            {"_id": doc_id},
-                            {"$set": {
-                                "content": updated_text,
-                                "updated_at": datetime.now()
-                            }},
-                            upsert=True
-                        )
-                        st.success("Nota adicionada ao arquivo com sucesso!")
-                        
-                        # Limpar o campo de entrada
-                        st.session_state.archive_input_val = ""
-                        st.rerun() 
-                        
-                    except Exception as e:
-                        st.error(f"Erro ao salvar: {e}")
-                else:
-                    st.error("Sem conexão com o banco de dados.")
-            else:
-                st.warning("Digite algo para arquivar.")
-        
-        st.markdown("---")
-        st.markdown("### � Histórico Acumulado")
-        
-        # Recuperar e exibir histórico (read-only)
-        history_content = "Carregando..."
-        if db is not None:
-            saved_doc = collection.find_one({"_id": doc_id})
-            history_content = saved_doc["content"] if saved_doc and "content" in saved_doc else "(Histórico vazio)"
-        else:
-            history_content = "Sem conexão."
+        # Layout mais compacto para o cabeçalho da nota
+        c1, c2 = st.columns([3, 1])
+        with c1:
+            st.subheader("📝 Descrição da Reunião")
+        with c2:
+            usuario = st.text_input("Usuário", value="", key="notepad_user", placeholder="Seu nome", label_visibility="collapsed")
             
-        st.text_area("Visualização do Arquivo:", value=history_content, height=300, disabled=True)
+        notes = st.text_area("Anotações", height=600, placeholder="Comece a digitar os pontos principais da reunião...", key="notepad_notes", label_visibility="collapsed")
+        
+        # Botão de download discretamente abaixo da área de texto
+        if notes:
+            ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
+            st.download_button("📥 Baixar Notas (Txt)", notes, file_name=f"Notas_{ts}.txt", mime="text/plain", use_container_width=True)
 
-        st.markdown("---")
-        st.subheader("🤖 Resumo Inteligente do Repositório")
+    with col_right:
+        # Uso de Tabs para organizar a complexidade
+        tab_repo, tab_ai = st.tabs(["🗄️ Repositório & Arquivo", "🤖 Assistente Inteligente"])
         
-        # Campo para instruções adicionais
-        ai_instructions = st.text_input(
-            "Instruções para a IA (Opcional):", 
-            placeholder="Ex: Resuma apenas as reuniões de Janeiro; ou Foco no projeto X...",
-            help="Use este campo para direcionar a análise da IA, pedindo foco em datas, assuntos ou pessoas específicas."
-        )
-        
-        if st.button("Gerar Resumo Estruturado com IA"):
-             resumo = summarize_repository(history_content, additional_instructions=ai_instructions)
-             st.markdown(resumo)
-             
-        st.markdown("---")
-        
-        st.subheader("💬 Chat com o Repositório")
-        
-        user_question = st.text_input("Faça uma pergunta sobre o histórico:", placeholder="Ex: O que foi decidido sobre o orçamento?")
-        
-        if st.button("Perguntar"):
-            if user_question:
-                answer = ask_repository(history_content, user_question)
-                st.info(answer)
+        with tab_repo:
+            st.caption("Gerencie o histórico centralizado de anotações.")
+            
+            # Inicializa variável no session_state
+            if "archive_input_val" not in st.session_state:
+                st.session_state.archive_input_val = ""
+
+            with st.container(border=True):
+                st.markdown("**Adicionar ao Arquivo**")
+                new_archive_input = st.text_area("Nova nota:", height=100, key="new_archive_input", placeholder="Digite ou copie aqui...", value=st.session_state.archive_input_val, label_visibility="collapsed")
+                
+                c_btn1, c_btn2 = st.columns(2)
+                with c_btn1:
+                    if st.button("⬇️ Copiar das Notas", use_container_width=True):
+                        if "notepad_notes" in st.session_state and st.session_state.notepad_notes:
+                            st.session_state.archive_input_val = st.session_state.notepad_notes
+                            st.rerun()
+                        else:
+                            st.toast("Nada para copiar!", icon="⚠️")
+                            
+                with c_btn2:
+                    if st.button("➕ Salvar no Histórico", type="primary", use_container_width=True):
+                         if new_archive_input:
+                            if db is not None:
+                                try:
+                                    current_doc = collection.find_one({"_id": doc_id})
+                                    current_text = current_doc["content"] if current_doc and "content" in current_doc else ""
+                                    
+                                    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
+                                    user_str = f" | 👤 {usuario}" if usuario else ""
+                                    new_entry = f"\n\n=== 📅 {timestamp}{user_str} ===\n{new_archive_input}"
+                                    
+                                    updated_text = (current_text + new_entry) if current_text else f"=== 📅 {timestamp}{user_str} ===\n{new_archive_input}"
+                                    
+                                    collection.update_one(
+                                        {"_id": doc_id},
+                                        {"$set": {"content": updated_text, "updated_at": datetime.now()}},
+                                        upsert=True
+                                    )
+                                    st.toast("Salvo com sucesso!", icon="✅")
+                                    st.session_state.archive_input_val = ""
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro: {e}")
+                            else:
+                                st.error("Sem conexão.")
+                         else:
+                            st.warning("Escreva algo para salvar.")
+
+            st.markdown("### 📜 Histórico")
+            # Recuperar histórico
+            history_content = "Carregando..."
+            if db is not None:
+                saved_doc = collection.find_one({"_id": doc_id})
+                history_content = saved_doc["content"] if saved_doc and "content" in saved_doc else "(Histórico vazio)"
             else:
-                st.warning("Por favor, digite uma pergunta.")
-    
-    st.markdown("---")
-    
-    if st.button("📥 Baixar Notas", type="primary"):
-        # Se tiver notas locais ou histórico
-        if notes or ((db is not None) and history_content != "(Histórico vazio)"):
-            timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            content = f"""# Notas de Reunião - {timestamp}
+                history_content = "Sem conexão."
+                
+            st.text_area("Histórico", value=history_content, height=350, disabled=True, label_visibility="collapsed")
+            
+            # Botão para baixar tudo
+            if history_content != "(Histórico vazio)" or notes:
+                full_content = f"ANOTAÇÕES ATUAIS:\n{notes if notes else '(Vazio)'}\n\n--- HISTÓRICO ---\n{history_content}"
+                st.download_button("📥 Baixar Relatório Completo", full_content, file_name=f"Relatorio_Completo_{datetime.now().strftime('%Y-%m-%d')}.txt", use_container_width=True)
 
-## Descrição da Reunião
-{notes if notes else "(Sem anotações)"}
-
----
-
-## Histórico do Arquivo
-{history_content}
-"""
-            st.download_button(
-                label="Confirmar Download (.txt)",
-                data=content,
-                file_name=f"Notas_{timestamp}.txt",
-                mime="text/plain"
-            )
-            st.success("Arquivo preparado para download!")
-        else:
-            st.warning("O bloco de notas e o histórico estão vazios.")
+        with tab_ai:
+            st.caption("Analise o histórico com o Aurélius.")
+            
+            with st.expander("📊 Gerador de Resumos", expanded=True):
+                ai_instructions = st.text_input("Foco da análise (Opcional):", placeholder="Ex: Decisões de Janeiro...")
+                if st.button("✨ Gerar Resumo Executivo", use_container_width=True):
+                     resumo = summarize_repository(history_content, additional_instructions=ai_instructions)
+                     st.markdown(resumo)
+            
+            st.markdown("---")
+            
+            with st.container(border=True):
+                st.markdown("**💬 Chat com o Repositório**")
+                user_question = st.text_input("Sua pergunta:", placeholder="O que foi falado sobre...?", label_visibility="collapsed")
+                if st.button("Perguntar ao Aurélius", use_container_width=True):
+                    if user_question:
+                        answer = ask_repository(history_content, user_question)
+                        st.info(answer)
+                    else:
+                        st.warning("Digite uma pergunta.")
