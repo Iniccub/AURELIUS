@@ -243,7 +243,7 @@ elif mode == "Bloco de Notas":
 
     with col_right:
         # Uso de Tabs para organizar a complexidade
-        tab_repo, tab_ai = st.tabs(["🗄️ Repositório & Arquivo", "🤖 Assistente Inteligente"])
+        tab_repo, tab_ai = st.tabs(["🗄️ Repositório & Arquivo", "🤖 Aurélius"])
         
         with tab_repo:
             st.caption("Gerencie o histórico centralizado de anotações.")
