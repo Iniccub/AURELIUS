@@ -375,14 +375,14 @@ elif mode == "Bloco de Notas":
             st.markdown("---")
 
             with st.container(border=True):
-                st.markdown("**💬 Chat com o Repositório**")
+                st.markdown("**💬 Chat com o Aurélius**")
                 user_question = st.text_input(
                     "Sua pergunta:",
                     placeholder="O que foi falado sobre...?",
                     label_visibility="collapsed",
                     key="repo_chat_question",
                 )
-                if st.button("Perguntar à IA", use_container_width=True):
+                if st.button("Perguntar ao Aurélius", use_container_width=True):
                     if user_question:
                         answer = ask_repository(history_content, user_question)
                         st.info(answer)
