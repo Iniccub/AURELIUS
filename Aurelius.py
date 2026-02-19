@@ -2,8 +2,11 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 from io import BytesIO
+import textwrap
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
 from mongodb_config import get_database
-from ai_summary import summarize_repository, ask_repository
+from ai_summary import summarize_repository, ask_repository, summarize_meeting_description
 
 # Configuração da Página
 st.set_page_config(
@@ -30,6 +33,37 @@ def local_css():
     """, unsafe_allow_html=True)
 
 local_css()
+
+
+def build_pdf(title, subtitle, body):
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    x_margin = 50
+    y = height - 80
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(x_margin, y, title)
+    y -= 28
+    c.setFont("Helvetica", 10)
+    for line in subtitle.split("\n"):
+        if line.strip():
+            c.drawString(x_margin, y, line)
+            y -= 14
+    y -= 10
+    c.setFont("Helvetica", 11)
+    wrap_width = 100
+    for paragraph in body.split("\n\n"):
+        for line in textwrap.wrap(paragraph, wrap_width):
+            if y < 60:
+                c.showPage()
+                y = height - 80
+                c.setFont("Helvetica", 11)
+            c.drawString(x_margin, y, line)
+            y -= 14
+        y -= 10
+    c.save()
+    buffer.seek(0)
+    return buffer.getvalue()
 
 # Título
 st.title("📝 Aurelius - O Assistente de IA da Rede Lius")
@@ -164,16 +198,23 @@ if mode == "Ata de Reunião":
 
                 st.success("Ata gerada com sucesso!")
                 
-                # Preview
                 st.markdown("### Pré-visualização")
                 st.markdown(md_output)
-                
-                # Download Button
+
+                ata_title = f"Ata de Reunião: {topic}"
+                ata_subtitle = (
+                    f"Data: {date.strftime('%d/%m/%Y')}\n"
+                    f"Horário: {time.strftime('%H:%M')}\n"
+                    f"Local: {location}\n"
+                    f"Organizador: {organizer}"
+                )
+                ata_pdf = build_pdf(ata_title, ata_subtitle, md_output)
+
                 st.download_button(
-                    label="📥 Baixar Ata (.txt)",
-                    data=md_output,
-                    file_name=f"Ata_{topic.replace(' ', '_')}_{date}.txt",
-                    mime="text/plain"
+                    label="📥 Baixar Ata (PDF)",
+                    data=ata_pdf,
+                    file_name=f"Ata_{topic.replace(' ', '_')}_{date}.pdf",
+                    mime="application/pdf"
                 )
 
 elif mode == "Bloco de Notas":
@@ -199,11 +240,6 @@ elif mode == "Bloco de Notas":
             usuario = st.text_input("Usuário", value="", key="notepad_user", placeholder="Seu nome", label_visibility="collapsed")
             
         notes = st.text_area("Anotações", height=600, placeholder="Comece a digitar os pontos principais da reunião...", key="notepad_notes", label_visibility="collapsed")
-        
-        # Botão de download discretamente abaixo da área de texto
-        if notes:
-            ts = datetime.now().strftime("%Y-%m-%d_%H-%M")
-            st.download_button("📥 Baixar Notas (Txt)", notes, file_name=f"Notas_{ts}.txt", mime="text/plain", use_container_width=True)
 
     with col_right:
         # Uso de Tabs para organizar a complexidade
@@ -269,26 +305,70 @@ elif mode == "Bloco de Notas":
                 
             st.text_area("Histórico", value=history_content, height=350, disabled=True, label_visibility="collapsed")
             
-            # Botão para baixar tudo
             if history_content != "(Histórico vazio)" or notes:
+                rel_title = "Relatório Completo de Notas"
+                rel_subtitle = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}\nUsuário: {usuario or 'Não informado'}"
                 full_content = f"ANOTAÇÕES ATUAIS:\n{notes if notes else '(Vazio)'}\n\n--- HISTÓRICO ---\n{history_content}"
-                st.download_button("📥 Baixar Relatório Completo", full_content, file_name=f"Relatorio_Completo_{datetime.now().strftime('%Y-%m-%d')}.txt", use_container_width=True)
+                rel_pdf = build_pdf(rel_title, rel_subtitle, full_content)
+                st.download_button("📥 Baixar Relatório Completo (PDF)", rel_pdf, file_name=f"Relatorio_Completo_{datetime.now().strftime('%Y-%m-%d')}.pdf", mime="application/pdf", use_container_width=True)
 
         with tab_ai:
-            st.caption("Analise o histórico com o Aurélius.")
-            
-            with st.expander("📊 Gerador de Resumos", expanded=True):
-                ai_instructions = st.text_input("Foco da análise (Opcional):", placeholder="Ex: Decisões de Janeiro...")
-                if st.button("✨ Gerar Resumo Executivo", use_container_width=True):
-                     resumo = summarize_repository(history_content, additional_instructions=ai_instructions)
-                     st.markdown(resumo)
-            
+            st.caption("Analise o histórico com inteligência artificial.")
+
+            with st.expander("📊 Resumo do Histórico Completo", expanded=True):
+                ai_instructions = st.text_input(
+                    "Foco da análise (Opcional):",
+                    key="repo_summary_instructions",
+                    placeholder="Ex: Decisões de Janeiro, foco no projeto X..."
+                )
+                if st.button("✨ Gerar Resumo do Repositório", use_container_width=True):
+                    resumo = summarize_repository(history_content, additional_instructions=ai_instructions)
+                    st.markdown(resumo)
+
+            with st.expander("🧾 Resumo Executivo da Descrição da Reunião", expanded=False):
+                desc_instructions = st.text_input(
+                    "Ajustes de foco (Opcional):",
+                    key="desc_summary_instructions",
+                    placeholder="Ex: Foque em riscos, conflitos e próximos passos..."
+                )
+                if st.button("⚡ Gerar Resumo da Descrição", use_container_width=True):
+                    if not notes or not notes.strip():
+                        st.warning("Preencha a Descrição da Reunião antes de gerar o resumo executivo.")
+                    else:
+                        resumo_desc = summarize_meeting_description(
+                            notes,
+                            history_content,
+                            additional_instructions=desc_instructions,
+                        )
+                        st.markdown(resumo_desc)
+
+                        st.session_state["last_desc_summary"] = resumo_desc
+
+                if "last_desc_summary" in st.session_state:
+                    resumo_para_pdf = st.session_state["last_desc_summary"]
+                    ts_pdf = datetime.now().strftime("%Y-%m-%d_%H-%M")
+                    resumo_title = "Resumo Executivo da Reunião"
+                    resumo_subtitle = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}\nUsuário: {usuario or 'Não informado'}"
+                    resumo_pdf = build_pdf(resumo_title, resumo_subtitle, resumo_para_pdf)
+                    st.download_button(
+                        "📥 Baixar Resumo Executivo (PDF)",
+                        resumo_pdf,
+                        file_name=f"Resumo_Descricao_{ts_pdf}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
+
             st.markdown("---")
-            
+
             with st.container(border=True):
                 st.markdown("**💬 Chat com o Repositório**")
-                user_question = st.text_input("Sua pergunta:", placeholder="O que foi falado sobre...?", label_visibility="collapsed")
-                if st.button("Perguntar ao Aurélius", use_container_width=True):
+                user_question = st.text_input(
+                    "Sua pergunta:",
+                    placeholder="O que foi falado sobre...?",
+                    label_visibility="collapsed",
+                    key="repo_chat_question",
+                )
+                if st.button("Perguntar à IA", use_container_width=True):
                     if user_question:
                         answer = ask_repository(history_content, user_question)
                         st.info(answer)
