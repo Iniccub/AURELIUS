@@ -3,3 +3,4 @@ pandas
 pymongo
 openpyxl
 msoffcrypto-tool
+reportlab
