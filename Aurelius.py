@@ -247,54 +247,65 @@ elif mode == "Bloco de Notas":
         
         with tab_repo:
             st.caption("Gerencie o histórico centralizado de anotações.")
-            
-            # Inicializa variável no session_state
-            if "archive_input_val" not in st.session_state:
-                st.session_state.archive_input_val = ""
+
+            if "new_archive_input" not in st.session_state:
+                st.session_state.new_archive_input = ""
+
+            if st.session_state.get("copy_from_notes", False):
+                if "notepad_notes" in st.session_state and st.session_state.notepad_notes:
+                    st.session_state.new_archive_input = st.session_state.notepad_notes
+                st.session_state.copy_from_notes = False
 
             with st.container(border=True):
                 st.markdown("**Adicionar ao Arquivo**")
-                new_archive_input = st.text_area("Nova nota:", height=100, key="new_archive_input", placeholder="Digite ou copie aqui...", value=st.session_state.archive_input_val, label_visibility="collapsed")
-                
+                new_archive_input = st.text_area(
+                    "Nova nota:",
+                    height=100,
+                    key="new_archive_input",
+                    placeholder="Digite ou copie aqui...",
+                    label_visibility="collapsed"
+                )
+
                 c_btn1, c_btn2 = st.columns(2)
                 with c_btn1:
                     if st.button("⬇️ Copiar das Notas", use_container_width=True):
                         if "notepad_notes" in st.session_state and st.session_state.notepad_notes:
-                            st.session_state.archive_input_val = st.session_state.notepad_notes
+                            st.session_state.copy_from_notes = True
                             st.rerun()
                         else:
                             st.toast("Nada para copiar!", icon="⚠️")
-                            
+
                 with c_btn2:
                     if st.button("➕ Salvar no Histórico", type="primary", use_container_width=True):
-                         if new_archive_input:
+                        if new_archive_input:
                             if db is not None:
                                 try:
                                     current_doc = collection.find_one({"_id": doc_id})
                                     current_text = current_doc["content"] if current_doc and "content" in current_doc else ""
-                                    
+
                                     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
                                     user_str = f" | 👤 {usuario}" if usuario else ""
                                     titulo_str = ""
                                     if "notepad_title" in st.session_state and st.session_state.notepad_title:
                                         titulo_str = f" | Título: {st.session_state.notepad_title}"
                                     new_entry = f"\n\n=== 📅 {timestamp}{user_str}{titulo_str} ===\n{new_archive_input}"
-                                    
+
                                     updated_text = (current_text + new_entry) if current_text else f"=== 📅 {timestamp}{user_str}{titulo_str} ===\n{new_archive_input}"
-                                    
+
                                     collection.update_one(
                                         {"_id": doc_id},
                                         {"$set": {"content": updated_text, "updated_at": datetime.now()}},
                                         upsert=True
                                     )
                                     st.toast("Salvo com sucesso!", icon="✅")
-                                    st.session_state.archive_input_val = ""
+                                    st.session_state.new_archive_input = ""
+                                    st.session_state.copy_from_notes = False
                                     st.rerun()
                                 except Exception as e:
                                     st.error(f"Erro: {e}")
                             else:
                                 st.error("Sem conexão.")
-                         else:
+                        else:
                             st.warning("Escreva algo para salvar.")
 
             st.markdown("### 📜 Histórico")
