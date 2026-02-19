@@ -232,14 +232,14 @@ elif mode == "Bloco de Notas":
     col_left, col_right = st.columns([1, 1], gap="large")
     
     with col_left:
-        # Layout mais compacto para o cabeçalho da nota
         c1, c2 = st.columns([3, 1])
         with c1:
             st.subheader("📝 Descrição da Reunião")
+            titulo_reuniao = st.text_input("Título da Reunião", value="", key="notepad_title", placeholder="Ex: Reunião de Alinhamento Mensal")
         with c2:
             usuario = st.text_input("Usuário", value="", key="notepad_user", placeholder="Seu nome", label_visibility="collapsed")
-            
-        notes = st.text_area("Anotações", height=600, placeholder="Comece a digitar os pontos principais da reunião...", key="notepad_notes", label_visibility="collapsed")
+        
+        notes = st.text_area("Anotações", height=600, placeholder="Conteúdo da reunião. Ex: Nesta reunião o objetivo é tratar do orçamento da unidade x, com a participação de xxx, xxx e xxx...", key="notepad_notes", label_visibility="collapsed")
 
     with col_right:
         # Uso de Tabs para organizar a complexidade
@@ -275,9 +275,12 @@ elif mode == "Bloco de Notas":
                                     
                                     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
                                     user_str = f" | 👤 {usuario}" if usuario else ""
-                                    new_entry = f"\n\n=== 📅 {timestamp}{user_str} ===\n{new_archive_input}"
+                                    titulo_str = ""
+                                    if "notepad_title" in st.session_state and st.session_state.notepad_title:
+                                        titulo_str = f" | Título: {st.session_state.notepad_title}"
+                                    new_entry = f"\n\n=== 📅 {timestamp}{user_str}{titulo_str} ===\n{new_archive_input}"
                                     
-                                    updated_text = (current_text + new_entry) if current_text else f"=== 📅 {timestamp}{user_str} ===\n{new_archive_input}"
+                                    updated_text = (current_text + new_entry) if current_text else f"=== 📅 {timestamp}{user_str}{titulo_str} ===\n{new_archive_input}"
                                     
                                     collection.update_one(
                                         {"_id": doc_id},
