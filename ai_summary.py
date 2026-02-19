@@ -29,6 +29,7 @@ def load_cargos_info():
         excel_password = None
         try:
             excel_password = st.secrets["excel"]["password"]
+
         except Exception:
             pass # Nenhuma senha configurada, segue fluxo normal
             
@@ -143,6 +144,81 @@ def summarize_repository(content, additional_instructions=None, model="gpt-4o-mi
             response_api = requests.post(api_url, headers=headers_api, json=body_message)
             response_api.raise_for_status()
             resposta = response_api.json()['choices'][0]['message']['content']
+            return resposta
+    except Exception as e:
+        return f"Erro ao comunicar com a IA: {str(e)}"
+
+
+def summarize_meeting_description(description, history, additional_instructions=None, model="gpt-4o-mini"):
+    api_key = get_openai_api_key()
+    if not api_key:
+        return "Erro: Chave da API não configurada."
+
+    if not description or not description.strip():
+        return "A descrição da reunião está vazia. Preencha o campo antes de gerar o resumo."
+
+    cargos_info = load_cargos_info()
+
+    api_url = 'https://api.openai.com/v1/chat/completions'
+    headers_api = {
+        'Authorization': f'Bearer {api_key.strip()}',
+        'Content-Type': 'application/json'
+    }
+
+    instructions_block = ""
+    if additional_instructions and additional_instructions.strip():
+        instructions_block = f"""
+### INSTRUÇÕES ESPECÍFICAS DO USUÁRIO:
+\"\"\"{additional_instructions}\"\"\""""
+
+    prompt = f"""
+Você é um assistente executivo sênior integrado ao sistema Aurelius da Rede Lius.
+Seu objetivo é gerar um RESUMO EXECUTIVO da reunião, com foco principal na descrição atual,
+usando o histórico apenas como complemento quando agregar contexto.
+
+### CONTEXTO CORPORATIVO (Colaboradores e Cargos):
+{cargos_info}
+
+{instructions_block}
+
+### CONTEÚDO PRIORITÁRIO – DESCRIÇÃO ATUAL DA REUNIÃO:
+{description[:8000]}
+
+### CONTEÚDO DE APOIO – HISTÓRICO RESUMIDO:
+{(history or '')[:7000]}
+
+### DIRETRIZES:
+1. Dê ÊNFASE ao campo de descrição atual. Use o histórico apenas para completar lacunas, confirmar decisões ou identificar recorrências.
+2. Use linguagem formal e corporativa, adequada a reporte para diretoria.
+3. Quando possível, conecte pessoas citadas aos cargos do contexto.
+
+### FORMATO DA RESPOSTA:
+1. Resumo Executivo da Reunião
+2. Principais Decisões e Encaminhamentos
+3. Riscos, Alertas ou Conflitos Relevantes
+4. Próximos Passos Recomendados
+"""
+
+    messages = [
+        {
+            "role": "system",
+            "content": "Você é um assistente executivo da Rede Lius, especialista em transformar anotações de reunião em resumos executivos objetivos."
+        },
+        {"role": "user", "content": prompt},
+    ]
+
+    body_message = {
+        "model": model,
+        "messages": messages,
+        "temperature": 0.25,
+        "max_tokens": 2000,
+    }
+
+    try:
+        with st.spinner("A IA está gerando o resumo executivo da descrição da reunião..."):
+            response_api = requests.post(api_url, headers=headers_api, json=body_message)
+            response_api.raise_for_status()
+            resposta = response_api.json()["choices"][0]["message"]["content"]
             return resposta
     except Exception as e:
         return f"Erro ao comunicar com a IA: {str(e)}"
