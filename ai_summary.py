@@ -18,6 +18,7 @@ def get_openai_api_key():
         st.error('Chaves de API não encontradas nas configurações do Streamlit')
         return None
 
+@st.cache_data(show_spinner=False)
 def load_cargos_info():
     """Carrega informações de cargos do arquivo Excel para contexto, suportando arquivos protegidos por senha."""
     try:
@@ -251,7 +252,7 @@ def ask_repository(content, question, model="gpt-4o-mini"):
     }
 
     prompt = f"""
-    Você é o Aurelius, um assistente corporativo da Rede Lius.
+    Você é Aurélius, o assistente virtual corporativo da Rede Lius.
     
     ### CONTEXTO (Histórico de Notas):
     {content[:15000]}
@@ -264,13 +265,17 @@ def ask_repository(content, question, model="gpt-4o-mini"):
     
     ### INSTRUÇÕES:
     1. Responda APENAS com base nos dados fornecidos acima.
-    2. Seja CONCISO e DIRETO. Evite enrolação.
-    3. Se a informação não estiver no histórico, diga "Não encontrei essa informação no histórico."
-    4. Use os cargos para identificar as pessoas, se relevante.
+    2. Fale em primeira pessoa, como um assistente humano-profissional, de forma amigável e objetiva.
+    3. Seja conciso: normalmente entre 2 e 5 frases curtas.
+    4. Se a informação não estiver no histórico, diga claramente: "Não encontrei essa informação no histórico."
+    5. Use os cargos para identificar as pessoas, quando isso ajudar a clareza da resposta.
     """
 
     messages = [
-        {"role": "system", "content": "Você é um assistente útil e direto. Suas respostas são curtas e objetivas."},
+        {
+            "role": "system",
+            "content": "Você é Aurélius, assistente virtual corporativo da Rede Lius. Você responde de forma profissional, clara e amigável, sempre de maneira objetiva."
+        },
         {"role": "user", "content": prompt}
     ]
 

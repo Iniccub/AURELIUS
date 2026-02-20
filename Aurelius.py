@@ -375,16 +375,35 @@ elif mode == "Bloco de Notas":
             st.markdown("---")
 
             with st.container(border=True):
-                st.markdown("**💬 Chat com o Aurélius**")
+                st.markdown("**💬 Aurélius – Assistente Virtual da Rede Lius**")
+
+                if "chat_messages" not in st.session_state:
+                    st.session_state.chat_messages = []
+
+                for msg in st.session_state.chat_messages:
+                    if msg.get("role") == "user":
+                        with st.chat_message("user"):
+                            st.markdown(msg.get("content", ""))
+                    else:
+                        with st.chat_message("assistant"):
+                            st.markdown(msg.get("content", ""))
+
                 user_question = st.text_input(
-                    "Sua pergunta:",
-                    placeholder="O que foi falado sobre...?",
+                    "Sua mensagem para o Aurélius:",
+                    placeholder="Ex: O que foi decidido sobre o orçamento na última reunião?",
                     label_visibility="collapsed",
                     key="repo_chat_question",
                 )
-                if st.button("Perguntar ao Aurélius", use_container_width=True):
+
+                if st.button("Enviar mensagem", use_container_width=True):
                     if user_question:
+                        st.session_state.chat_messages.append(
+                            {"role": "user", "content": user_question}
+                        )
                         answer = ask_repository(history_content, user_question)
-                        st.info(answer)
+                        st.session_state.chat_messages.append(
+                            {"role": "assistant", "content": answer}
+                        )
+                        st.rerun()
                     else:
                         st.warning("Digite uma pergunta.")
