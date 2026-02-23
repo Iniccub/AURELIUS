@@ -251,6 +251,10 @@ elif mode == "Bloco de Notas":
             if "new_archive_input" not in st.session_state:
                 st.session_state.new_archive_input = ""
 
+            if st.session_state.get("clear_new_archive_input", False):
+                st.session_state.new_archive_input = ""
+                st.session_state.clear_new_archive_input = False
+
             if st.session_state.get("copy_from_notes", False):
                 if "notepad_notes" in st.session_state and st.session_state.notepad_notes:
                     st.session_state.new_archive_input = st.session_state.notepad_notes
@@ -298,7 +302,7 @@ elif mode == "Bloco de Notas":
                                         upsert=True
                                     )
                                     st.toast("Salvo com sucesso!", icon="✅")
-                                    st.session_state.new_archive_input = ""
+                                    st.session_state.clear_new_archive_input = True
                                     st.session_state.copy_from_notes = False
                                     st.rerun()
                                 except Exception as e:
