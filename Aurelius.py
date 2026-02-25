@@ -34,6 +34,50 @@ def local_css():
 
 local_css()
 
+# --- Autenticação de Segurança ---
+def check_password():
+    """Retorna True se a senha estiver correta."""
+    
+    # Verifica se a seção de segurança existe nos secrets
+    if "security" not in st.secrets:
+        # Se não existir, avisa e bloqueia por padrão para evitar acesso indevido
+        st.error("⚠️ Configuração de segurança incompleta. Verifique o arquivo secrets.toml.")
+        return False
+
+    def password_entered():
+        """Checa se a senha inserida está correta."""
+        if st.session_state["password"] == st.secrets["security"]["password"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Remove a senha da sessão por segurança
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # Primeira execução, mostrar input
+        st.text_input(
+            "🔒 Digite a senha de acesso ao Sistema Aurelius:", 
+            type="password", 
+            on_change=password_entered, 
+            key="password"
+        )
+        return False
+    elif not st.session_state["password_correct"]:
+        # Senha incorreta
+        st.text_input(
+            "🔒 Digite a senha de acesso ao Sistema Aurelius:", 
+            type="password", 
+            on_change=password_entered, 
+            key="password"
+        )
+        st.error("❌ Senha incorreta. Tente novamente.")
+        return False
+    else:
+        # Senha correta
+        return True
+
+if not check_password():
+    st.stop()
+
 
 def build_pdf(title, subtitle, body):
     buffer = BytesIO()

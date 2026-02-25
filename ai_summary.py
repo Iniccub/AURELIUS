@@ -99,33 +99,39 @@ def summarize_repository(content, additional_instructions=None, model="gpt-4o-mi
     instructions_block = ""
     if additional_instructions and additional_instructions.strip():
         instructions_block = f"""
-    ### 🎯 INSTRUÇÕES ESPECÍFICAS DO USUÁRIO:
-    O usuário solicitou um foco ou filtro específico para esta análise:
-    "{additional_instructions}"
+    <user_instructions_override>
+    {additional_instructions}
+    </user_instructions_override>
     
-    Por favor, priorize estas instruções ao gerar o resumo, adaptando o foco conforme solicitado (ex: filtrando por data, assunto ou pessoa específica).
+    Por favor, priorize estas instruções acima ao gerar o resumo, adaptando o foco conforme solicitado (ex: filtrando por data, assunto ou pessoa específica).
     """
 
     prompt = f"""
     Você é um assistente executivo sênior integrado ao sistema Aurelius da Rede Lius.
     Sua tarefa é analisar o histórico de anotações de reuniões e criar um resumo executivo estruturado, utilizando o contexto corporativo fornecido.
     
-    ### CONTEXTO CORPORATIVO (Colaboradores e Cargos):
+    <corporate_context>
     {cargos_info}
+    </corporate_context>
+
     {instructions_block}
-    ### INSTRUÇÕES DE ANÁLISE:
+
+    <analysis_instructions>
     1. **Identificação de Stakeholders**: Sempre que um nome for mencionado nas notas (ou se o usuário que fez o registro for identificado), tente correlacionar com a lista de cargos para dar contexto sobre quem está envolvido (ex: "A Diretora Márcia Nóbrega pontuou...").
     2. **Viés Corporativo**: Utilize linguagem formal e corporativa. Foque em decisões estratégicas, atribuições de responsabilidade e alinhamentos entre áreas.
     3. **Estrutura**: Organize a resposta de forma clara e hierárquica.
+    </analysis_instructions>
     
-    ### CONTEÚDO PARA ANÁLISE (Histórico de Notas):
+    <notes_history>
     {content[:15000]}  # Limitando caracteres
+    </notes_history>
     
-    ### FORMATO DA RESPOSTA ESPERADA:
+    <expected_format>
     1. **Resumo Executivo**: Visão geral estratégica dos temas discutidos.
     2. **Principais Deliberações e Pontos de Atenção**: Lista de decisões tomadas e pontos críticos, citando os envolvidos e seus cargos quando possível.
     3. **Evolução dos Tópicos**: Breve análise cronológica de como os assuntos evoluíram.
     4. **Action Items / Pendências**: Tarefas ou pontos em aberto, identificando os responsáveis e suas áreas.
+    </expected_format>
     """
 
     messages = [
@@ -169,36 +175,43 @@ def summarize_meeting_description(description, history, additional_instructions=
     instructions_block = ""
     if additional_instructions and additional_instructions.strip():
         instructions_block = f"""
-### INSTRUÇÕES ESPECÍFICAS DO USUÁRIO:
-\"\"\"{additional_instructions}\"\"\""""
+    <user_instructions_override>
+    {additional_instructions}
+    </user_instructions_override>
+    """
 
     prompt = f"""
-Você é um assistente executivo sênior integrado ao sistema Aurelius da Rede Lius.
-Seu objetivo é gerar um RESUMO EXECUTIVO da reunião, com foco principal na descrição atual,
-usando o histórico apenas como complemento quando agregar contexto.
-
-### CONTEXTO CORPORATIVO (Colaboradores e Cargos):
-{cargos_info}
-
-{instructions_block}
-
-### CONTEÚDO PRIORITÁRIO – DESCRIÇÃO ATUAL DA REUNIÃO:
-{description[:8000]}
-
-### CONTEÚDO DE APOIO – HISTÓRICO RESUMIDO:
-{(history or '')[:7000]}
-
-### DIRETRIZES:
-1. Dê ÊNFASE ao campo de descrição atual. Use o histórico apenas para completar lacunas, confirmar decisões ou identificar recorrências.
-2. Use linguagem formal e corporativa, adequada a reporte para diretoria.
-3. Quando possível, conecte pessoas citadas aos cargos do contexto.
-
-### FORMATO DA RESPOSTA:
-1. Resumo Executivo da Reunião
-2. Principais Decisões e Encaminhamentos
-3. Riscos, Alertas ou Conflitos Relevantes
-4. Próximos Passos Recomendados
-"""
+    Você é um assistente executivo sênior integrado ao sistema Aurelius da Rede Lius.
+    Seu objetivo é gerar um RESUMO EXECUTIVO da reunião, com foco principal na descrição atual,
+    usando o histórico apenas como complemento quando agregar contexto.
+    
+    <corporate_context>
+    {cargos_info}
+    </corporate_context>
+    
+    {instructions_block}
+    
+    <priority_content_current_meeting>
+    {description[:8000]}
+    </priority_content_current_meeting>
+    
+    <supporting_content_history>
+    {(history or '')[:7000]}
+    </supporting_content_history>
+    
+    <guidelines>
+    1. Dê ÊNFASE ao campo de descrição atual. Use o histórico apenas para completar lacunas, confirmar decisões ou identificar recorrências.
+    2. Use linguagem formal e corporativa, adequada a reporte para diretoria.
+    3. Quando possível, conecte pessoas citadas aos cargos do contexto.
+    </guidelines>
+    
+    <response_format>
+    1. Resumo Executivo da Reunião
+    2. Principais Decisões e Encaminhamentos
+    3. Riscos, Alertas ou Conflitos Relevantes
+    4. Próximos Passos Recomendados
+    </response_format>
+    """
 
     messages = [
         {
@@ -254,21 +267,25 @@ def ask_repository(content, question, model="gpt-4o-mini"):
     prompt = f"""
     Você é Aurélius, o assistente virtual corporativo da Rede Lius.
     
-    ### CONTEXTO (Histórico de Notas):
+    <history_context>
     {content[:15000]}
+    </history_context>
     
-    ### CONTEXTO CORPORATIVO (Cargos):
+    <corporate_context>
     {cargos_info}
+    </corporate_context>
     
-    ### PERGUNTA DO USUÁRIO:
-    "{question}"
+    <user_question>
+    {question}
+    </user_question>
     
-    ### INSTRUÇÕES:
+    <response_guidelines>
     1. Responda APENAS com base nos dados fornecidos acima.
     2. Fale em primeira pessoa, como um assistente humano-profissional, de forma amigável e objetiva.
     3. Seja conciso: normalmente entre 2 e 5 frases curtas.
     4. Se a informação não estiver no histórico, diga claramente: "Não encontrei essa informação no histórico."
     5. Use os cargos para identificar as pessoas, quando isso ajudar a clareza da resposta.
+    </response_guidelines>
     """
 
     messages = [
