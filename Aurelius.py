@@ -10,7 +10,7 @@ from ai_summary import summarize_repository, ask_repository, summarize_meeting_d
 
 # Configuração da Página
 st.set_page_config(
-    page_title="Aurelius - Assistente de Atas",
+    page_title="Aurelius",
     page_icon="📝",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -23,7 +23,7 @@ def local_css():
         padding: 2rem;
     }
     .block-container {
-        padding-top: 1rem;
+        padding-top: 2rem;
         padding-bottom: 1rem;
     }
     .stTextArea textarea {
@@ -54,6 +54,7 @@ def check_password():
 
     if "password_correct" not in st.session_state:
         # Primeira execução, mostrar input
+        st.text("🔒 Acesso Restrito ao Sistema Aurelius")
         st.text_input(
             "🔒 Digite a senha de acesso ao Sistema Aurelius:", 
             type="password", 
